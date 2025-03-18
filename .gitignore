@@ -1,3 +1,4 @@
 testing*.py
-*.idea/
-*.xml/
+.DS_Store
+.idea/
+.xml/
