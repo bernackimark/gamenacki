@@ -19,7 +19,8 @@ class Dealer:
         return random.randint(0, self.player_cnt - 1)
 
     def advance_turn(self) -> None:
-        self.player_turn_idx = (self.player_turn_idx + 1) % self.player_cnt if self.player_turn_idx else (self.dealer_idx + 1) % self.player_cnt
+        self.player_turn_idx = (self.player_turn_idx + 1) % self.player_cnt if self.player_turn_idx is not None \
+            else (self.dealer_idx + 1) % self.player_cnt
 
     def advance_button(self) -> None:
         self.dealer_idx = (self.dealer_idx + 1) % self.player_cnt
