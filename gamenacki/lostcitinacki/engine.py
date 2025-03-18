@@ -37,9 +37,6 @@ class LostCities:
             try:
                 player_move: PlayerMove = player.make_move(self.gs.piles.hands[turn_idx], self.gs)
                 move: Move = self.gs.make_move(turn_idx, player_move)
-
-                # TODO: when bot starts round, turns alternate correctly; when i start, i get every turn
-
                 self.log.push(Event(move.after_state, move.action, move.player_idx))
             except Exception as ex:
                 self.renderer.render_error(ex)
