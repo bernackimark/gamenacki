@@ -8,8 +8,7 @@ from gamenacki.common.base_constants import BaseAction
 class Action(BaseAction):
     BEGIN_GAME = auto()
     BEGIN_ROUND = auto()
-    PLAY_CARD = auto()
-    PICKUP_CARD = auto()
+    PLAYER_MOVE = auto()
     END_ROUND = auto()
     END_GAME = auto()
 

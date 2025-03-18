@@ -1,13 +1,26 @@
+from copy import deepcopy
 from dataclasses import dataclass
 
 from gamenacki.common.base_game_state import BaseGameState
 from gamenacki.common.dealer import Dealer
-from gamenacki.common.piles import Hand, Discard
+from gamenacki.common.piles import Discard
 from gamenacki.common.scorer import Ledger, WinCondition, Scorer
 from gamenacki.lostcitinacki.models.cards import Card
-from gamenacki.lostcitinacki.models.constants import Color, PlayToStack, DrawFromStack
-from gamenacki.lostcitinacki.models.piles import ExpeditionBoard, Deck, Piles
+from gamenacki.lostcitinacki.models.constants import Action, Color, PlayToStack, DrawFromStack
+from gamenacki.lostcitinacki.models.piles import ExpeditionBoard, Deck, Hand, Piles
 
+@dataclass(frozen=True)
+class Move:
+    action: Action
+    player_idx: int
+    before_state: "GameState"
+    after_state: "GameState"
+
+@dataclass
+class PlayerMove:
+    card: Card
+    play_to_stack: PlayToStack
+    draw_from_stack: DrawFromStack
 
 @dataclass
 class GameState(BaseGameState):
@@ -83,37 +96,23 @@ class GameState(BaseGameState):
     def deal(self, card_cnt: int = 8):
         self.dealer.deal(self.piles.deck, [_ for _ in self.piles.hands], card_cnt)
 
-    def play_card_to(self, p_idx: int, c: Card, dest_pile: PlayToStack) -> Color | Discard:
-        hand = self.piles.hands[p_idx]
-        exp_board = self.piles.exp_boards[p_idx]
-        if c not in hand.cards:
-            raise ValueError(f"{c} is not in the hand")
-        if dest_pile == PlayToStack.DISCARD:
-            return self._play_to_discard(hand, c)
-        else:
-            return self._play_to_exp_pile(hand, c, exp_board)
-
-    def draw_from(self, p_idx: int, source_pile: DrawFromStack):
-        hand = self.piles.hands[p_idx]
-        returned_card = self.piles.deck.pop() if source_pile == DrawFromStack.DECK else self.piles.discard.pop()
-        if not returned_card:
-            raise ValueError("There are no cards here")
-        hand.push(returned_card)
-        self.dealer.player_turn_idx = self.dealer.next_player_idx()
-
-    def _play_to_discard(self, h: Hand, c: Card) -> Discard:
-        h.remove(c)
-        self.piles.discard.push(c)
-        return self.piles.discard
-
-    def _play_to_exp_pile(self, h: Hand, c: Card, exp_board: ExpeditionBoard) -> Color:
-        dest_pile = next(pile for pile in exp_board.expeditions if pile.color == c.color)
-        max_number_in_color = max([p.get_max_card_in_color(c.color) for p in self.piles.exp_boards])
-        if max_number_in_color > c.value > 0:
-            raise ValueError(f"You must play higher than a {max_number_in_color}")
-        h.remove(c)
-        dest_pile.push(c)
-        return dest_pile.color
+    def make_move(self, player_idx: int, move: PlayerMove) -> Move:
+        before_state = deepcopy(self)
+        hand = self.piles.hands[player_idx]
+        exp_board = self.piles.exp_boards[player_idx]
+        try:
+            hand.remove(move.card)
+            if move.play_to_stack == PlayToStack.DISCARD:
+                self.piles.discard.push(move.card)
+                hand.push(self.piles.deck.pop())
+            if move.play_to_stack == PlayToStack.EXPEDITION:
+                dest_pile = next(pile for pile in exp_board.expeditions if pile.color == move.card.color)
+                dest_pile.push(move.card)
+                hand.push(self.piles.deck.pop() if move.draw_from_stack == DrawFromStack.DECK else self.piles.discard.pop())
+            self.dealer.advance_turn()
+            return Move(Action.PLAYER_MOVE, player_idx, before_state, self)
+        except Exception as e:
+            raise e
 
     def assign_points(self) -> None:
         for pl, exp_board in zip(self.scorer.ledgers, self.piles.exp_boards):

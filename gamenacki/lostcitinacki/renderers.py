@@ -13,7 +13,7 @@ class ConsoleRenderer(Renderer):
             print(f"{players[gs.dealer.dealer_idx].name} is the dealer; {players[gs.dealer.player_turn_idx].name} plays first")
             print()
 
-        if not gs.is_round_over and not gs.is_round_over:
+        if not gs.is_game_over:
             print('Their Expeditions:', gs.piles.exp_boards[1].expeditions)
             print('Discard:', gs.piles.discard.cards[-1] if gs.piles.discard.cards else '[]', 'Deck:',
                   '*' * len(gs.piles.deck.cards))
@@ -25,6 +25,7 @@ class ConsoleRenderer(Renderer):
             print('Round is over')
             for p, ledger in zip(players, gs.scorer.ledgers):
                 print(f'{p.name} has {ledger.total} {"points" if ledger.total != 1 else "point"}')
+            print()
 
         if gs.is_game_over:
             print('Game is over')

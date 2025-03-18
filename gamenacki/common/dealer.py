@@ -13,16 +13,13 @@ class Dealer:
 
     def __post_init__(self):
         self.dealer_idx = self.select_random_p_idx()
-        self.player_turn_idx = self.next_player_idx()
+        self.advance_turn()
 
     def select_random_p_idx(self):
         return random.randint(0, self.player_cnt - 1)
 
-    def next_player_idx(self) -> int:
-        if self.player_turn_idx is None:
-            return (self.dealer_idx + 1) % self.player_cnt
-        else:
-            return (self.player_turn_idx + 1) % self.player_cnt
+    def advance_turn(self) -> None:
+        self.player_turn_idx = (self.player_turn_idx + 1) % self.player_cnt if self.player_turn_idx else (self.dealer_idx + 1) % self.player_cnt
 
     def advance_button(self) -> None:
         self.dealer_idx = (self.dealer_idx + 1) % self.player_cnt

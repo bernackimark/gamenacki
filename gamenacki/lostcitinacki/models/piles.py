@@ -1,10 +1,12 @@
 """A module for collections of cards"""
 
 from dataclasses import dataclass, field
+from itertools import product
 
-from gamenacki.common.piles import CardStack, BaseDeck, Hand, Discard
+import gamenacki.common.piles
+from gamenacki.common.piles import CardStack, BaseDeck, Discard, Hand
 from gamenacki.lostcitinacki.models.cards import Card, Handshake, ExpeditionCard
-from gamenacki.lostcitinacki.models.constants import Color
+from gamenacki.lostcitinacki.models.constants import Color, DrawFromStack, PlayToStack
 
 
 @dataclass
@@ -62,6 +64,22 @@ class ExpeditionBoard:
     def clear(self) -> None:
         [pile.clear() for pile in self.expeditions]
 
+
+@dataclass
+class Hand(gamenacki.common.piles.Hand):
+    def get_possible_moves(self, board_playable_cards: list[Card],
+                           discard_has_cards: bool) -> list[tuple[Card, PlayToStack, DrawFromStack]]:
+        """Return combos of (card, DISCARD/EXPEDITION, DECK/DISCARD) where allowed by game rules"""
+        possible_moves: list[tuple[Card, PlayToStack, DrawFromStack]] = []
+        for card, play_to_stack, draw_from_stack in product(self.cards, set(PlayToStack), set(DrawFromStack)):
+            if (play_to_stack == PlayToStack.DISCARD and draw_from_stack == DrawFromStack.DECK) or \
+                (play_to_stack == PlayToStack.EXPEDITION and card in board_playable_cards and
+                (draw_from_stack == DrawFromStack.DECK or (draw_from_stack == DrawFromStack.DISCARD and discard_has_cards))):
+                possible_moves.append((card, play_to_stack, draw_from_stack))
+
+        print(possible_moves)
+
+        return possible_moves
 
 @dataclass
 class Deck(BaseDeck):

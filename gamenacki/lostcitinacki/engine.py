@@ -5,8 +5,9 @@ from gamenacki.common.base_renderer import Renderer
 from gamenacki.common.log import Log, Event
 from gamenacki.common.piles import Discard
 
-from gamenacki.lostcitinacki.models.constants import Color, DrawFromStack, Action
-from gamenacki.lostcitinacki.models.game_state import GameState
+from gamenacki.lostcitinacki.models.cards import Card
+from gamenacki.lostcitinacki.models.constants import Action, DrawFromStack, PlayToStack
+from gamenacki.lostcitinacki.models.game_state import GameState, Move, PlayerMove
 from gamenacki.lostcitinacki.players import Player
 
 
@@ -34,14 +35,12 @@ class LostCities:
             turn_idx = self.gs.dealer.player_turn_idx
             player = self.players[turn_idx]
             try:
-                selected_card, play_to_stack = player.play_card(self.gs.piles.hands[turn_idx], self.gs.board_playable_cards)
-                color_or_discard: Color | Discard = self.gs.play_card_to(turn_idx, selected_card, play_to_stack)
-                self.log.push(Event(self.gs, Action.PLAY_CARD, turn_idx))
-                can_pick_up_discard: bool = not isinstance(color_or_discard, Discard) and len(self.gs.piles.discard) > 0
-                drawing_from: DrawFromStack = player.pick_up_from(can_pick_up_discard, self.gs.is_discard_card_playable)
-                self.gs.draw_from(turn_idx, drawing_from)
-                self.log.push(Event(self.gs, Action.PICKUP_CARD, turn_idx))
+                player_move: PlayerMove = player.make_move(self.gs.piles.hands[turn_idx], self.gs)
+                move: Move = self.gs.make_move(turn_idx, player_move)
 
+                # TODO: when bot starts round, turns alternate correctly; when i start, i get every turn
+
+                self.log.push(Event(move.after_state, move.action, move.player_idx))
             except Exception as ex:
                 self.renderer.render_error(ex)
 
