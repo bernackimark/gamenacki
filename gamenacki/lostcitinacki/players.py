@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import random
 
+from gamenacki.common.base_player import BasePlayer
 from gamenacki.lostcitinacki.models.cards import Card
 from gamenacki.lostcitinacki.models.constants import DrawFromStack, PlayToStack
 from gamenacki.lostcitinacki.models.game_state import GameState, PlayerMove
@@ -9,10 +10,7 @@ from gamenacki.lostcitinacki.models.piles import Hand
 
 
 @dataclass
-class Player(ABC):
-    idx: int
-    name: str
-
+class Player(BasePlayer):
     @staticmethod
     @abstractmethod
     def make_move(h: Hand, gs: GameState) -> PlayerMove:
