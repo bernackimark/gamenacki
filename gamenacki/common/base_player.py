@@ -5,4 +5,5 @@ from dataclasses import dataclass
 class BasePlayer(ABC):
     idx: int
     name: str
+    is_bot: bool
 
