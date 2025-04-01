@@ -1,6 +1,6 @@
 [project]
 name = "gamenacki"
-version = "0.1.0"
+version = "0.1.1"
 description = "library for games"
 authors = [{name = "Bernacki", email = "bernackimark@gmail.com"}]
 dependencies = []
