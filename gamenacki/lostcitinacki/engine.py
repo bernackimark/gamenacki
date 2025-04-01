@@ -1,6 +1,7 @@
 import time
 from dataclasses import dataclass, field
 
+from gamenacki.common.base_engine import BaseEngine
 from gamenacki.common.base_renderer import Renderer
 from gamenacki.common.log import Log, Event
 from gamenacki.lostcitinacki.models.constants import Action
@@ -9,7 +10,7 @@ from gamenacki.lostcitinacki.players import Player
 
 
 @dataclass
-class LostCities:
+class LostCities(BaseEngine):
     players: list[Player]
     renderer: Renderer
     gs: GameState = None
