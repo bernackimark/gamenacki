@@ -23,13 +23,14 @@ class WinCondition(Enum):
     HIGHEST_SCORE_W_TIES = auto()
     LOWEST_SINGLE_SCORE_UPPER_BOUND_REACHED = auto()
     LOWEST_SCORE_W_TIES_UPPER_BOUND_REACHED = auto()
+    NO_WIN_CONDITION = auto()
 
 
 @dataclass
 class Scorer:
     """Maintains ledgers, a win condition, the target score, who won ..."""
     ledgers: list[Ledger]
-    win_condition: WinCondition
+    win_condition: WinCondition = WinCondition.NO_WIN_CONDITION
     target_score: int = None
 
     @property
