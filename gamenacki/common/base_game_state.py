@@ -19,7 +19,7 @@ class BaseGameState(ABC):
         """
 
     @abstractmethod
-    def create_piles(self) -> list[Stack]:
+    def create_piles(self) -> None:
         ...
 
     @abstractmethod
