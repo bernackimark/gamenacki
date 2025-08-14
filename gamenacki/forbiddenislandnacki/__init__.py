@@ -60,12 +60,17 @@ ADVENTURERS = (
 )
 
 
+class TileHeight(StrEnum):
+    NORMAL = auto()
+    FLOODED = auto()
+    SUNKEN = auto()
+
 @dataclass
 class Tile:
     name: str
     img: str = ''
     treasure: Treasure = None
-    is_flooded: bool = False
+    height: TileHeight = TileHeight.NORMAL
     starting_tile_for: AdventurerType = None
     is_exit: bool = False
     adventurers: list[Adventurer] = field(default_factory=list)
@@ -88,7 +93,11 @@ class Tile:
             return f'{final_ansi_str:^18}{ANSI_COLOR_RESET}'
 
     def repr_(self) -> str:
-        return self.name.lower() if self.is_flooded else self.name.upper()
+        if self.height == TileHeight.NORMAL:
+            return self.name.upper()
+        if self.height == TileHeight.FLOODED:
+            return self.name.lower()
+        return ' ' * 18
 
 
 TILES = (
@@ -210,21 +219,17 @@ class Empty:
     def __repr__(self) -> str:
         return f'{"":^18}'
 
-@dataclass
-class Sunken:
-    def __repr__(self) -> str:
-        return f'{"":^18}'
 
 @dataclass
 class Board:
     all_tiles: InitVar[tuple[Tile, ...]]
     tile_arrangement: InitVar[tuple[tuple[int, ...], ...]]
-    spaces: tuple[tuple[Tile | Empty | Sunken, ...], ...] = None
+    spaces: tuple[tuple[Tile | Empty, ...], ...] = None
 
     def __post_init__(self, all_tiles: tuple[Tile], tile_arrangement: tuple[tuple[int, ...]]):
         tiles = list(all_tiles)
         random.shuffle(tiles)
-        self.spaces = tuple(tuple(tiles.pop() if bit else Sunken() for bit in row) for row in tile_arrangement)
+        self.spaces = tuple(tuple(tiles.pop() if bit else Empty() for bit in row) for row in tile_arrangement)
 
     @property
     def tiles(self) -> list[Tile]:
