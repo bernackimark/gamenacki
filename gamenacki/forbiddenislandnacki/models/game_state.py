@@ -2,6 +2,7 @@ from collections import defaultdict, Counter
 from dataclasses import dataclass, field, InitVar
 import random
 
+from gamenacki.common.card_pile import CardPile
 from gamenacki.forbiddenislandnacki.models.adventurers import ADVENTURERS, Adventurer, Explorer, Messenger
 from gamenacki.forbiddenislandnacki.models.board import Board
 from gamenacki.forbiddenislandnacki.models.piles import Piles
@@ -20,29 +21,20 @@ class PlayerMove:
     ...
 
 
-"""
-• Move
-• Shore Up
-• Give a Treasure Card
-• Capture a Treasure
-"""
-
 @dataclass
 class GameState:
     player_cnt: int
     initial_water_level_int: int = 0
-    board: Board = field(init=False)
+    board: Board = field(default_factory=Board)
     water_meter: WaterMeter = field(init=False)
-    piles: Piles = field(init=False)
+    piles: Piles = field(default_factory=Piles)
     treasures_collected: list[Treasure] = field(default_factory=list)
-    hands: tuple[list[TreasureCard], ...] = field(init=False)
+    hands: tuple[CardPile, ...] = field(init=False)
     adventurers: tuple[Adventurer] = field(init=False)
     adventurer_coords: dict[str: tuple[int, int]] = field(default_factory=dict)
     player_turn_idx: int = field(init=False)
 
     def __post_init__(self):
-        self.create_piles()
-        self.board = Board()
         self.water_meter = WaterMeter(WATER_LEVELS[self.initial_water_level_int])
 
         # the island starts to sink; 6 random tiles are flooded
@@ -50,7 +42,7 @@ class GameState:
             t = next(t for t in self.board.tiles if t.name == flood_card.name)
             t.sink()
 
-        self.hands = tuple([] for _ in range(self.player_cnt))
+        self.hands = tuple(CardPile() for _ in range(self.player_cnt))
 
         self.adventurers = tuple(random.sample(ADVENTURERS, self.player_cnt))
 
@@ -63,12 +55,9 @@ class GameState:
             for h in self.hands:
                 while isinstance(self.piles.treasure_cards.cards[-1], TreasureCardWatersRise):
                     random.shuffle(self.piles.treasure_cards.cards)
-                h.append(self.piles.treasure_cards.cards.pop())
+                h.push(self.piles.treasure_cards.cards.pop())
 
         self.player_turn_idx = random.choice([_ for _ in range(self.player_cnt)])
-
-    def create_piles(self) -> None:
-        self.piles = Piles()
 
     def deal(self) -> None:
         pass
@@ -140,16 +129,12 @@ class GameState:
             return
         source_hand = self.hands[player_idx]
         redeemed_cards = []
-        for card in source_hand[:]:
-            if card.name == collectable_treasure.name and len(redeemed_cards) < 4:
+        for card in source_hand.cards[:]:
+            if card.name == collectable_treasure.value and len(redeemed_cards) < 4:
                 redeemed_cards.append(card)
                 source_hand.remove(card)
         self.piles.treasure_card_discard.cards.extend(redeemed_cards)
         self.treasures_collected.append(collectable_treasure)
-        print(len(self.piles.treasure_card_discard.cards))
-        # TODO:
-        #  treasure pile discard isn't gaining any cards
-        #  the source hand isn't losing any cards ...
 
     def do_turn(self):
         ...
