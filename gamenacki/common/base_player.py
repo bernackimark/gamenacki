@@ -5,5 +5,5 @@ from dataclasses import dataclass
 class BasePlayer(ABC):
     idx: int
     name: str
-    is_bot: bool = False
+    is_bot: bool  # isn't defaulted as subclasses would be forced into default values downstream
 
