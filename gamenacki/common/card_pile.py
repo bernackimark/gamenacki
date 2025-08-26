@@ -35,8 +35,8 @@ class CardPile(Generic[T]):
             raise ValueError(f"{card} not found")
         self.cards.remove(card)
 
-    def pop(self) -> T | None:
-        return self.cards.pop() if self.cards else None
+    def pop(self, idx: int = -1) -> T | None:
+        return self.cards.pop(idx) if self.cards else None
 
     def clear(self) -> None:
         self.cards.clear()
