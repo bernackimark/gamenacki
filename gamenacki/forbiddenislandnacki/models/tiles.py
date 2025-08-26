@@ -19,6 +19,9 @@ class Tile:
     height: TileHeight = TileHeight.NORMAL
     is_exit: bool = False
 
+    def __hash__(self):
+        return hash(self.name)
+
     def __repr__(self) -> str:
         name = self.name.upper() if self.height == TileHeight.NORMAL else self.name.lower() if self.height == TileHeight.FLOODED else ' '
         return f'{name:^18}'

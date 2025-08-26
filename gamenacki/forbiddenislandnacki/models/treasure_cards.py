@@ -32,7 +32,7 @@ class TreasureCardHelicopterLift(TreasureCard):
     action_text: str = 'use at any time, fly some people on the same tile to any other tile'
 
 @dataclass(repr=False)
-class TreasureCardSandbag(TreasureCard):
+class TreasureCardSandbags(TreasureCard):
     name: str = 'Sandbags'
     is_instant: bool = True
     action_text: str = 'shore up any tile'
@@ -42,5 +42,5 @@ def create_treasure_cards() -> list[TreasureCard]:
     treasures: list[TreasureCardTreasure] = [TreasureCardTreasure(t.value) for t in TREASURES for _ in range(5)]
     waters_rise: list[TreasureCard] = [TreasureCardWatersRise() for _ in range(3)]
     helicopter_lift: list[TreasureCard] = [TreasureCardHelicopterLift() for _ in range(3)]
-    sandbags: list[TreasureCard] = [TreasureCardSandbag() for _ in range(2)]
+    sandbags: list[TreasureCard] = [TreasureCardSandbags() for _ in range(2)]
     return treasures + waters_rise + helicopter_lift + sandbags
