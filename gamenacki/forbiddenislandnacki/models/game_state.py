@@ -130,7 +130,24 @@ class GameState:
 
         self.player_turn_idx = random.choice([_ for _ in range(self.player_cnt)])
 
-    def deal(self) -> None:
+    def deal_treasure_cards(self) -> None:
+        drawn_card_cnt = 0
+        while not drawn_card_cnt == 2:
+            if not len(self.piles.treasure_cards):
+                self.piles.treasure_cards.cards = self.piles.treasure_card_discard.cards
+                self.piles.treasure_card_discard.clear()
+                self.piles.treasure_cards.shuffle()
+            while isinstance(self.piles.treasure_cards.peek(), TreasureCardWatersRise) and drawn_card_cnt == 1:
+                self.piles.treasure_cards.shuffle()
+            card = self.piles.treasure_cards.pop()
+            if not isinstance(card, TreasureCardWatersRise):
+                self.hands[self.player_turn_idx].push(card)
+            else:
+                self.water_meter.waters_rise()
+                # since both drawn cards are happening here, there's no ability to check for game over after 1st card
+            drawn_card_cnt += 1
+
+    def deal_flood_cards(self) -> None:
         pass
 
     @property
@@ -281,6 +298,14 @@ class GameState:
         self.piles.treasure_card_discard.push(self.hands[aph.card_owner_idx].cards.pop(aph.card_in_hand_idx))
 
     def pass_the_turn(self):
+        self.deal_treasure_cards()
+        if self.is_game_over:
+            return
+
+        self.deal_flood_cards()
+        if self.is_game_over:
+            return
+
         self.turn_pilot_flights = 0
         self.turn_action_cnt = 0
         self.player_turn_idx = (self.player_turn_idx + 1) % self.player_cnt
@@ -327,7 +352,7 @@ class GameState:
     #    Engineer is only charged a w one action to shore up two w/o moving
     #  collecting:
     #    you can only collect if you're on one of the correct tiles
-    #  draw treasure cards (test for WatersRise)
+    #  drawing treasure cards doesn't yield a card back one at a time, so no ability to see waters rise
     #  flip flood tiles equal to the WaterLevel
     #  when tile is sunken, all adventurers on the tile must select an adjacent tile (or they may die)
 
