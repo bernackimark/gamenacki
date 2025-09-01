@@ -29,7 +29,7 @@ class WaterMeter:
                 level_repr = f'{ANSI_COLOR_CODES.get(Color.BLUE)}{level.draw_cnt}{ANSI_COLOR_RESET}'
             else:
                 level_repr = level.draw_cnt
-            level_repr_list.append(str(level_repr))
+            level_repr_list.append(str(level_repr) if not level.is_death else '☠')
         return ' '.join(level_repr_list)
 
     def waters_rise(self) -> WaterLevel:
