@@ -12,7 +12,7 @@ class ConsoleRenderer(Renderer):
     def render(self, gs: GameState, players: list[Player]) -> None:
         self._clear()
         self._print_board(gs)
-        print(f"Treasures Collected: {[_ for _ in gs.treasures_collected]}")
+        print(f"Water Level {gs.water_meter} ... Treasures Collected: {[_ for _ in gs.treasures_collected]}")
         for idx, h in enumerate(gs.hands):
             print(f"{players[idx].name_and_role}'s hand: {sorted(h, key=lambda x: x.name)}")
         print(f"It's {players[gs.player_turn_idx].name_and_role}'s turn")
