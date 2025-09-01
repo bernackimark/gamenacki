@@ -16,9 +16,6 @@ from gamenacki.forbiddenislandnacki.models.treasure_cards import (TreasureCard, 
 from gamenacki.forbiddenislandnacki.models.waters import WaterMeter, WATER_LEVELS
 
 
-ADVENTURER_STARTING_TILES = {'Diver': 'Iron Gate', 'Engineer': 'Bronze Gate', 'Explorer': 'Copper Gate',
-                             'Messenger': 'Silver Gate', 'Navigator': 'Gold Gate', 'Pilot': "Fools' Landing"}
-
 @dataclass(frozen=True)
 class Move:
     action: Action
@@ -30,22 +27,18 @@ class Move:
 @dataclass(frozen=True)
 class AdvMove:
     player_id: int
-    row: int
-    col: int
     tile: Tile
 
     def __repr__(self) -> str:
-        return f"Moving player #{self.player_id} to {self.tile.name} at ({self.row}, {self.col})"
+        return f"Moving player #{self.player_id} to {self.tile.name} at ({self.tile.x}, {self.tile.y})"
 
 @dataclass(frozen=True)
 class AdvShore:
     player_id: int
-    row: int
-    col: int
     tile: Tile
 
     def __repr__(self) -> str:
-        return f"Player #{self.player_id} shores up {self.tile.name} at ({self.row}, {self.col})"
+        return f"Player #{self.player_id} shores up {self.tile.name} at ({self.tile.x}, {self.tile.y})"
 
 @dataclass(frozen=True)
 class AdvPassCard:
@@ -72,11 +65,9 @@ class AdvPlaySandbags:
     card_owner_idx: int
     card_in_hand_idx: int
     tile: Tile
-    tile_row: int
-    tile_col: int
 
     def __repr__(self) -> str:
-        return f"Player #{self.card_owner_idx}'s Sandbags shores up {self.tile} at ({self.tile_row}, {self.tile_col})"
+        return f"Player #{self.card_owner_idx}'s Sandbags shores up {self.tile} at ({self.tile.x}, {self.tile.y})"
 
 @dataclass(frozen=True)
 class AdvPlayHeliLift:
@@ -84,11 +75,7 @@ class AdvPlayHeliLift:
     card_owner_idx: int
     card_in_hand_idx: int
     player_roles_to_move: list[str]
-    source_tile_row: int
-    source_tile_col: int
     source_tile: Tile
-    dest_tile_row: int
-    dest_tile_col: int
     dest_tile: Tile
 
     def __repr__(self) -> str:
@@ -131,8 +118,8 @@ class GameState:
         self.adventurers = tuple(random.sample(ADVENTURERS, self.player_cnt))
 
         for a in self.adventurers:
-            tile_row_idx, tile_col_idx = self.board.get_tile_coord_by_name(ADVENTURER_STARTING_TILES[a.name])
-            self.adventurer_coords[a.name] = (tile_row_idx, tile_col_idx)
+            starting_tile: Tile = next(t for t in self.board.tiles if t.name == a.starting_tile_name)
+            self.adventurer_coords[a.name] = starting_tile.x, starting_tile.y
 
         # deal cards to players; Waters Rise! cards are shuffled back into deck and re-tried
         for _ in range(2):
@@ -162,14 +149,14 @@ class GameState:
         """example return: (AdvShore(0, 2, 3, Gold Gate) =
         player 0 is shoring up the tile at coordinates (2, 3), which is Gold Gate"""
         adv_coord = self.adventurer_coords[self.adventurers[player_idx].name]
-        same_tile = self.board.get_tile_spaces(adv_coord, self.board.TileDirection.SAME)
+        same_tile = self.board.get_tiles(adv_coord, self.board.TileDirection.SAME)
 
         if isinstance(self.adventurers[player_idx], Explorer):
-            possible_tiles = (same_tile + self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ADJACENT) +
-                              self.board.get_tile_spaces(adv_coord, self.board.TileDirection.DIAGONAL))
+            possible_tiles = (same_tile + self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT) +
+                              self.board.get_tiles(adv_coord, self.board.TileDirection.DIAGONAL))
         else:
-            possible_tiles = same_tile + self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ADJACENT)
-        return tuple([(AdvShore(player_idx, t_r, t_c, tile)) for t_r, t_c, tile in possible_tiles if tile.height == TileHeight.FLOODED])
+            possible_tiles = same_tile + self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+        return tuple([(AdvShore(player_idx, t)) for t in possible_tiles if t.height == TileHeight.FLOODED])
 
     def get_possible_movements(self, player_idx: int) -> tuple[AdvMove, ...]:
         """example return: ((AdvMove(0, 2, 3, Gold Gate), ) =
@@ -181,25 +168,25 @@ class GameState:
         adv_coord = self.adventurer_coords[self.adventurers[player_idx].name]
 
         if isinstance(adv, Explorer):
-            possible_tiles = (self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ADJACENT) +
-                              self.board.get_tile_spaces(adv_coord, self.board.TileDirection.DIAGONAL))
-            return tuple([AdvMove(player_idx, t_r, t_c, tile) for t_r, t_c, tile in possible_tiles])
+            possible_tiles = (self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT) +
+                              self.board.get_tiles(adv_coord, self.board.TileDirection.DIAGONAL))
+            return tuple([AdvMove(player_idx, t) for t in possible_tiles])
         if isinstance(adv, Pilot) and self.turn_pilot_flights == 0:
-            possible_tiles = self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ALL_OTHER)
-            return tuple([AdvMove(player_idx, t_r, t_c, tile) for t_r, t_c, tile in possible_tiles])
+            possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ALL_OTHER)
+            return tuple([AdvMove(player_idx, t) for t in possible_tiles])
         if isinstance(adv, Navigator):
-            nav_possible_tiles = self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ADJACENT)
-            all_adv_moves = [AdvMove(player_idx, t_r, t_c, tile) for t_r, t_c, tile in nav_possible_tiles]
+            nav_possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+            all_adv_moves = [AdvMove(player_idx, t) for t in nav_possible_tiles]
             for i, other_adv in enumerate(self.adventurers):
                 if i == player_idx:
                     continue
                 other_adv_coord = self.adventurer_coords[self.adventurers[i].name]
-                other_adv_tiles = self.board.get_tile_spaces(other_adv_coord, self.board.TileDirection.DOUBLE_ADJACENT)
-                all_adv_moves.extend([AdvMove(i, t_r, t_c, tile) for t_r, t_c, tile in other_adv_tiles])
+                other_adv_tiles = self.board.get_tiles(other_adv_coord, self.board.TileDirection.DOUBLE_ADJACENT)
+                all_adv_moves.extend([AdvMove(i, t) for t in other_adv_tiles])
             return tuple(all_adv_moves)
 
-        possible_tiles = self.board.get_tile_spaces(adv_coord, self.board.TileDirection.ADJACENT)
-        return tuple([AdvMove(player_idx, t_r, t_c, tile) for t_r, t_c, tile in possible_tiles])
+        possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+        return tuple([AdvMove(player_idx, t) for t in possible_tiles])
 
     def get_possible_treasure_passes(self, player_idx: int) -> tuple[AdvPassCard, ...]:
         """example return: AdvPassCard((0, 4, 1, 'Pilot', 'The Earth Stone'), ...) =
@@ -224,13 +211,13 @@ class GameState:
         return AdvCollectTreasure(player_idx, treasure)
 
     def get_possible_sandbags(self, player_idx: int) -> tuple[AdvPlaySandbags] | None:
-        flooded_tile_spaces = [t for t in self.board.tile_spaces if t[2].height == TileHeight.FLOODED]
+        flooded_tile_spaces = [t for t in self.board.tiles if t.height == TileHeight.FLOODED]
         adv_play_sandbags = []
         for h_i, h in enumerate(self.hands):
             for c_i, c in enumerate(h.cards):
                 if isinstance(c, TreasureCardSandbags):
                     for t in flooded_tile_spaces:
-                        adv_play_sandbags.append(AdvPlaySandbags(player_idx, h_i, c_i, t[2], t[0], t[1]))
+                        adv_play_sandbags.append(AdvPlaySandbags(player_idx, h_i, c_i, t))
         return adv_play_sandbags if adv_play_sandbags else None
 
     def get_possible_helicopter_lifts(self, player_idx: int) -> tuple[AdvPlayHeliLift] | None:
@@ -243,12 +230,11 @@ class GameState:
             adv_coord_combos[coord] = combos
         for hand_idx, card_idx in heli_cards:
             for coord, role_combos in adv_coord_combos.items():
-                source_tile_r, source_tile_c, source_tile = self.board.get_tile_space_by_coord(coord[0], coord[1])
-                for dest_tile_r, dest_tile_c, dest_tile in self.board.get_all_other_tile_spaces(coord):
+                source_tile: Tile = self.board.get_tile_by_coord(coord[0], coord[1])
+                for dest_tile in self.board.get_all_other_tiles(coord):
                     for role_combo in role_combos:
                         adv_play_heli.append(AdvPlayHeliLift(player_idx, hand_idx, card_idx, role_combo,
-                                                             source_tile_r, source_tile_c, source_tile,
-                                                             dest_tile_r, dest_tile_c, dest_tile))
+                                                             source_tile, dest_tile))
         return tuple(adv_play_heli) if adv_play_heli else None
 
     def get_possible_actions(self, p_idx: int) -> tuple[AdvMove | AdvShore | AdvPassCard | AdvCollectTreasure | AdvPlaySandbags | AdvPlayHeliLift | AdvEndTurn, ...]:
@@ -286,12 +272,12 @@ class GameState:
         self.treasures_collected.append(collectable_treasure)
 
     def play_sandbags(self, aps: AdvPlaySandbags):
-        self.shore_tile(aps.tile_row, aps.tile_col)
+        self.shore_tile(aps.tile.x, aps.tile.y)
         self.piles.treasure_card_discard.push(self.hands[aps.card_owner_idx].cards.pop(aps.card_in_hand_idx))
 
     def play_heli_lift(self, aph: AdvPlayHeliLift):
         for adv_role in aph.player_roles_to_move:
-            self.adventurer_coords[adv_role] = (aph.dest_tile_row, aph.dest_tile_col)
+            self.adventurer_coords[adv_role] = (aph.dest_tile.x, aph.dest_tile.y)
         self.piles.treasure_card_discard.push(self.hands[aph.card_owner_idx].cards.pop(aph.card_in_hand_idx))
 
     def pass_the_turn(self):
@@ -313,11 +299,11 @@ class GameState:
             return
         if isinstance(action, AdvMove):
             if isinstance(self.adventurers[self.player_turn_idx], Pilot):
-                if self.was_pilot_action_a_flight(action.row, action.col):
+                if self.was_pilot_action_a_flight(action.tile.x, action.tile.y):
                     self.turn_pilot_flights += 1
-            self.move_adventurer(action.player_id, action.row, action.col)
+            self.move_adventurer(action.player_id, action.tile.x, action.tile.y)
         elif isinstance(action, AdvShore):
-            self.shore_tile(action.row, action.col)
+            self.shore_tile(action.tile.x, action.tile.y)
         elif isinstance(action, AdvPassCard):
             self.pass_treasure_card(action.from_player_id, action.from_player_card_idx, action.to_player_id)
         elif isinstance(action, AdvCollectTreasure):

@@ -14,6 +14,8 @@ class TileHeight(StrEnum):
 @dataclass
 class Tile:
     name: str
+    x: int = -1
+    y: int = -1
     img: str = ''
     treasure: Treasure = None
     height: TileHeight = TileHeight.NORMAL

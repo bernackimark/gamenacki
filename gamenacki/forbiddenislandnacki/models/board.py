@@ -13,7 +13,6 @@ BOARD_STANDARD = ((0, 0, 1, 1, 0, 0),
                   (0, 1, 1, 1, 1, 0),
                   (0, 0, 1, 1, 0, 0))
 
-# TODO: The Messenger & Navigator sharing a tile is dorking the tile's repr
 
 @dataclass
 class Empty:
@@ -29,7 +28,7 @@ class Board:
         ADJACENT = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # up, down, left, right
         DIAGONAL = [(-1, -1), (-1, 1), (1, -1), (1, 1)]  # up-left, up-right, down-left, down-right
         DOUBLE_ADJACENT = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1), (0, -2), (-2, 0), (0, 2), (2, 0)]
-        ALL_OTHER = [(r, c) for r in range(-5, 6) for c in range(-5, 6) if (r, c) != (0, 0)]
+        ALL_OTHER = [(r, c) for r in range(-5, 6) for c in range(-5, 6) if (r, c) != (0, 0)]  # warning: hard-coded
 
     all_tiles: InitVar[tuple[Tile, ...]] = TILES
     tile_arrangement: InitVar[tuple[tuple[int, ...], ...]] = BOARD_STANDARD
@@ -39,6 +38,11 @@ class Board:
         tiles = list(all_tiles)
         random.shuffle(tiles)
         self.spaces = tuple(tuple(tiles.pop() if bit else Empty() for bit in row) for row in tile_arrangement)
+        for r_i, row in enumerate(self.spaces):
+            for c_i, tile in enumerate(row):
+                if isinstance(tile, Tile):
+                    tile.x = r_i
+                    tile.y = c_i
 
     def __repr__(self) -> str:
         return "\n".join(" ".join([str(s) for s in row]) for row in self.spaces)
@@ -47,14 +51,8 @@ class Board:
     def tiles(self) -> tuple[Tile, ...]:
         return tuple(space for row in self.spaces for space in row if isinstance(space, Tile))
 
-    @property
-    def tile_spaces(self) -> tuple[tuple[int, int, Tile], ...]:
-        """((0, 3, 'Coral Palace'), ...) = (row 0, col 3, tile)"""
-        return tuple([(r_i, c_i, space) for r_i, row in enumerate(self.spaces) for c_i, space in enumerate(row)
-                      if isinstance(space, Tile)])
-
-    def get_tile_space_by_coord(self, row: int, col: int) -> tuple[int, int, Tile]:
-        return next((r, c, tile) for r, c, tile in self.tile_spaces if r == row and c == col)
+    def get_tile_by_coord(self, row: int, col: int) -> Tile:
+        return next(t for t in self.tiles if t.x == row and t.y == col)
 
     def get_tile_coord_by_name(self, tile_name: str) -> tuple[int, int]:
         for r_idx, row in enumerate(self.spaces):
@@ -63,15 +61,14 @@ class Board:
                     return r_idx, c_idx
         raise ValueError(f"I couldn't find a tile named {tile_name}")
 
-    def get_tile_spaces(self, coord: tuple[int, int], directions: TileDirection) -> list[tuple[int, int, Tile]] | list[None]:
+    def get_tiles(self, coord: tuple[int, int], directions: TileDirection) -> list[Tile]:
         row_cnt, col_cnt = len(self.spaces), len(self.spaces[0])
         neighbors = []
         for dr, dc in directions.value:
             r, c = coord[0] + dr, coord[1] + dc
             if 0 <= r < row_cnt and 0 <= c < col_cnt and isinstance(self.spaces[r][c], Tile):
-                neighbors.append((r, c, self.spaces[r][c]))
+                neighbors.append(self.spaces[r][c])
         return neighbors
 
-    def get_all_other_tile_spaces(self, coord: tuple[int, int]) -> list[tuple[int, int, Tile]]:
-        return [(r_i, c_i, space) for r_i, row in enumerate(self.spaces) for c_i, space in enumerate(row)
-                if isinstance(space, Tile) and coord != (r_i, c_i)]
+    def get_all_other_tiles(self, coord: tuple[int, int]) -> list[Tile]:
+        return [t for t in self.tiles if (t.x, t.y) != coord]
