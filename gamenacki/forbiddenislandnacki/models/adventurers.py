@@ -7,6 +7,7 @@ from gamenacki.forbiddenislandnacki.models.constants import Color, ANSI_COLOR_CO
 @dataclass
 class Adventurer(ABC):
     color: Color
+    starting_tile_name: str
     special_power_text: str
     moves_and_shores: tuple[tuple[int, int]] = ((-1, 0), (1, 0), (0, -1), (0, 1))  # up, down, left, right
     shore_cnt_per_action: int = 1
@@ -22,33 +23,39 @@ class Adventurer(ABC):
 @dataclass
 class Diver(Adventurer):
     color: Color = Color.BLACK
+    starting_tile_name: str = 'Iron Gate'
     special_power_text: str = 'does dive stuff'
 
 @dataclass
 class Engineer(Adventurer):
     color: Color = Color.RED
+    starting_tile_name: str = 'Bronze Gate'
     special_power_text: str = "The Engineer may shore up 2 tiles for 1 action"
     shore_cnt_per_action: int = 2
 
 @dataclass
 class Explorer(Adventurer):
     color: Color = Color.GREEN
+    starting_tile_name: str = 'Copper Gate'
     special_power_text: str = 'move/shore diagonally'
     moves_and_shores: tuple[tuple[int, int]] = ((-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, 1), (1, -1))
 
 @dataclass
 class Messenger(Adventurer):
     color: Color = Color.GRAY
+    starting_tile_name: str = 'Silver Gate'
     special_power_text: str = 'pass treasures anywhere'
 
 @dataclass
 class Navigator(Adventurer):
     color: Color = Color.YELLOW
+    starting_tile_name: str = 'Gold Gate'
     special_power_text: str = 'move another player <=2 adjacent spaces for 1 action'
 
 @dataclass
 class Pilot(Adventurer):
     color: Color = Color.BLUE
+    starting_tile_name: str = "Fools' Landing"
     special_power_text: str = 'once per turn, fly to any tile'
 
 
