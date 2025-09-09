@@ -1,6 +1,5 @@
 from abc import abstractmethod
-from dataclasses import dataclass, field
-import random
+from dataclasses import dataclass
 
 from gamenacki.common.base_player import BasePlayer
 from gamenacki.forbiddenislandnacki.models.adventurers import Adventurer
@@ -30,37 +29,3 @@ class ConsolePlayer(Player):
         move_idx = int(input("Please make your move selection: "))
         return possible_actions[move_idx]
 
-        # the_input: str = input("Please select your action: [m]ove, [s]hore, [p]ass, [c]ollect, sand[b]ags, [h]elicopter"
-        #                        "(ex: 'm024', 's02', 'p11', 'c', '') ")
-
-        # if the_input[0] == 'm':
-        #     gs.move_adventurer(int(the_input[1]), int(the_input[2]), int(the_input[3]))
-        # elif the_input[0] == 's':
-        #     gs.shore_tile(int(the_input[1]), int(the_input[2]))
-        # elif the_input[0] == 'p':
-        #     gs.pass_treasure_card(self.idx, int(the_input[1]), int(the_input[2]))
-        # elif the_input[0] == 'c':
-        #     gs.collect_treasure(self.idx)
-        # elif the_input[0] == 'b':
-        #     gs.play_sandbags(AdvPlaySandbags(self.idx, the_input[2]))
-        # elif the_input[0] == 'h':
-        #     ...
-
-
-    # @staticmethod
-    # def make_move(h: Hand, gs: GameState) -> PlayerMove:
-    #     options = h.get_possible_moves(gs.board_playable_cards, len(gs.piles.discard.cards) > 0)
-    #     possible_player_moves: list[PlayerMove] = [PlayerMove(c, pts, dfs) for c, pts, dfs in options]
-    #     while True:
-    #         try:
-    #             sel_card, exp_or_discard, deck_or_discard = input('card, e/d, de/di (R7 e de) ').strip().split()
-    #             card: Card | None = next((c for c in h if c.__repr__() == sel_card), None)
-    #             play_to_stack = PlayToStack.EXPEDITION if exp_or_discard == 'e' else PlayToStack.DISCARD
-    #             draw_from_stack = DrawFromStack.DECK if deck_or_discard == 'de' else DrawFromStack.DISCARD
-    #             move = PlayerMove(card, play_to_stack, draw_from_stack)
-    #             if move in possible_player_moves:
-    #                 return move
-    #         except Exception as e:
-    #             raise e
-    #             # TODO: do i have access to Renderer.render_error() from here?
-    #             #  or should i not try/except here, but rather in the engine?
