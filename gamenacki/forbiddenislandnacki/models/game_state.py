@@ -15,6 +15,9 @@ from gamenacki.forbiddenislandnacki.models.treasure_cards import (TreasureCard, 
                                                                   TreasureCardTreasure)
 from gamenacki.forbiddenislandnacki.models.waters import WaterMeter, WATER_LEVELS
 
+MAX_ACTIONS_PER_TURN = 3
+MAX_CARDS_IN_HAND = 5
+
 
 @dataclass(frozen=True)
 class Move:
@@ -84,6 +87,15 @@ class AdvPlayHeliLift:
                 f"from {self.source_tile.name} to {self.dest_tile.name}")
 
 @dataclass(frozen=True)
+class AdvDiscard:
+    player_id: int
+    card_in_hand_idx: int
+    card: TreasureCard
+
+    def __repr__(self) -> str:
+        return f"Player #{self.player_id} discards {self.card.name}"
+
+@dataclass(frozen=True)
 class AdvEndTurn:
     player_id: int
 
@@ -104,6 +116,7 @@ class GameState:
     player_turn_idx: int = field(init=False)
     turn_pilot_flights: int = field(init=False, default=0)
     turn_action_cnt: int = field(init=False, default=0)
+    is_player_willingly_passing_the_turn: bool = field(init=False, default=False)
 
     def __post_init__(self):
         self.water_meter = WaterMeter(WATER_LEVELS[self.initial_water_level_int])
@@ -122,7 +135,7 @@ class GameState:
             self.adventurer_coords[a.name] = starting_tile.x, starting_tile.y
 
         # deal cards to players; Waters Rise! cards are shuffled back into deck and re-tried
-        for _ in range(2):
+        for _ in range(10):
             for h in self.hands:
                 while isinstance(self.piles.treasure_cards.cards[-1], TreasureCardWatersRise):
                     random.shuffle(self.piles.treasure_cards.cards)
@@ -138,12 +151,14 @@ class GameState:
                 self.piles.treasure_card_discard.clear()
                 self.piles.treasure_cards.shuffle()
             while isinstance(self.piles.treasure_cards.peek(), TreasureCardWatersRise) and drawn_card_cnt == 1:
+                print("Shuffling ...")
                 self.piles.treasure_cards.shuffle()
             card = self.piles.treasure_cards.pop()
             if not isinstance(card, TreasureCardWatersRise):
                 self.hands[self.player_turn_idx].push(card)
             else:
                 self.water_meter.waters_rise()
+                print("WATERS RISE!!!")
                 # since both drawn cards are happening here, there's no ability to check for game over after 1st card
             drawn_card_cnt += 1
 
@@ -220,12 +235,15 @@ class GameState:
 
     def get_possible_collect_treasure(self, player_idx: int) -> AdvCollectTreasure | None:
         """example return: AdvCollectTreasure(0, The Earth Stone) = player 0 collects The Earth Stone"""
-        treasure_card_ctr_most_popular = Counter([c.name for c in self.hands[player_idx]]).most_common(1)
-        if not treasure_card_ctr_most_popular or treasure_card_ctr_most_popular[0][1] < 4:
+        my_coord_x, my_coord_y = self.adventurer_coords[self.adventurers[player_idx].name]
+        my_tile_treasure: Treasure = self.board.get_tile_by_coord(my_coord_x, my_coord_y).treasure
+        if not my_tile_treasure:
             return None
-        treasure_name = treasure_card_ctr_most_popular[0][0]
-        treasure = next((t for t in TREASURES if t == treasure_name and t not in self.treasures_collected), None)
-        return AdvCollectTreasure(player_idx, treasure)
+        if my_tile_treasure in self.treasures_collected:
+            return None
+        if [c.name for c in self.hands[player_idx].cards].count(my_tile_treasure.value) < 4:
+            return None
+        return AdvCollectTreasure(player_idx, my_tile_treasure)
 
     def get_possible_sandbags(self, player_idx: int) -> tuple[AdvPlaySandbags] | None:
         flooded_tile_spaces = [t for t in self.board.tiles if t.height == TileHeight.FLOODED]
@@ -235,7 +253,7 @@ class GameState:
                 if isinstance(c, TreasureCardSandbags):
                     for t in flooded_tile_spaces:
                         adv_play_sandbags.append(AdvPlaySandbags(player_idx, h_i, c_i, t))
-        return adv_play_sandbags if adv_play_sandbags else None
+        return tuple(adv_play_sandbags) if adv_play_sandbags else None
 
     def get_possible_helicopter_lifts(self, player_idx: int) -> tuple[AdvPlayHeliLift] | None:
         adv_play_heli = []
@@ -254,7 +272,19 @@ class GameState:
                                                              source_tile, dest_tile))
         return tuple(adv_play_heli) if adv_play_heli else None
 
-    def get_possible_actions(self, p_idx: int) -> tuple[AdvMove | AdvShore | AdvPassCard | AdvCollectTreasure | AdvPlaySandbags | AdvPlayHeliLift | AdvEndTurn, ...]:
+    def get_possible_discards(self, p_idx: int) -> tuple[AdvDiscard, ...] | None:
+        """Player does not get the option to discard if they are not over the max"""
+        if len(self.hands[p_idx].cards) <= MAX_CARDS_IN_HAND:
+            return None
+        return tuple([AdvDiscard(p_idx, c_idx, c) for c_idx, c in enumerate(self.hands[p_idx].cards)])
+
+    def get_possible_actions(self, p_idx: int) -> tuple[AdvMove | AdvShore | AdvPassCard | AdvCollectTreasure | AdvPlaySandbags | AdvPlayHeliLift | AdvEndTurn | AdvDiscard, ...]:
+        if (discards := self.get_possible_discards(p_idx)) and (self.turn_action_cnt == MAX_ACTIONS_PER_TURN or self.is_player_willingly_passing_the_turn):
+            return discards
+
+        if self.turn_action_cnt >= MAX_ACTIONS_PER_TURN or self.is_player_willingly_passing_the_turn:
+            self.pass_the_turn()
+
         actions = [AdvEndTurn(p_idx)]
         actions.extend(self.get_possible_movements(p_idx))
         actions.extend(self.get_possible_shores(p_idx))
@@ -297,7 +327,13 @@ class GameState:
             self.adventurer_coords[adv_role] = (aph.dest_tile.x, aph.dest_tile.y)
         self.piles.treasure_card_discard.push(self.hands[aph.card_owner_idx].cards.pop(aph.card_in_hand_idx))
 
+    def play_discard(self, ad: AdvDiscard):
+        self.piles.treasure_card_discard.push(self.hands[ad.player_id].cards.pop(ad.card_in_hand_idx))
+
     def pass_the_turn(self):
+        if self.get_possible_discards(self.player_turn_idx):
+            return
+
         self.deal_treasure_cards()
         if self.is_game_over:
             return
@@ -308,6 +344,7 @@ class GameState:
 
         self.turn_pilot_flights = 0
         self.turn_action_cnt = 0
+        self.is_player_willingly_passing_the_turn = False
         self.player_turn_idx = (self.player_turn_idx + 1) % self.player_cnt
 
     def was_pilot_action_a_flight(self, new_row: int, new_col: int) -> bool:
@@ -318,8 +355,12 @@ class GameState:
             return True
         return False
 
-    def make_move(self, action: AdvMove | AdvShore | AdvPassCard | AdvCollectTreasure | AdvPlaySandbags | AdvPlayHeliLift | AdvEndTurn):
+    def make_move(self, action: AdvMove | AdvShore | AdvPassCard | AdvCollectTreasure | AdvPlaySandbags | AdvPlayHeliLift | AdvEndTurn | AdvDiscard):
+        if isinstance(action, AdvDiscard):
+            self.play_discard(action)
+            return
         if isinstance(action, AdvEndTurn):
+            self.is_player_willingly_passing_the_turn = True
             self.pass_the_turn()
             return
         if isinstance(action, AdvMove):
@@ -342,7 +383,7 @@ class GameState:
 
         if not isinstance(action, (AdvPlaySandbags, AdvPlayHeliLift)):
             self.turn_action_cnt += 1
-        if self.turn_action_cnt == 3:
+        if self.turn_action_cnt == MAX_ACTIONS_PER_TURN:
             self.pass_the_turn()
 
     # TODO:
@@ -350,9 +391,9 @@ class GameState:
     #    The Diver may move through one or more adjacent missing and/or flooded tiles for 1 action.
     #  shore:
     #    Engineer is only charged a w one action to shore up two w/o moving
-    #  collecting:
-    #    you can only collect if you're on one of the correct tiles
+    #  passing the turn; players having too many cards; it's a mess and needs review !!!
     #  drawing treasure cards doesn't yield a card back one at a time, so no ability to see waters rise
+    #  drawing cards & flipping flood tiles should await user input and only allow those things to happen?
     #  flip flood tiles equal to the WaterLevel
     #  when tile is sunken, all adventurers on the tile must select an adjacent tile (or they may die)
 
