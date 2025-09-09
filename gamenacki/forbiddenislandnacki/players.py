@@ -24,7 +24,7 @@ class Player(BasePlayer):
 @dataclass
 class ConsolePlayer(Player):
     def make_move(self, gs: GameState) -> "PlayerMove":
-        possible_actions = gs.get_possible_actions(self.idx)
+        possible_actions = gs.get_possible_actions()
         for i, p in enumerate(possible_actions):
             print(i, p)
         move_idx = int(input("Please make your move selection: "))
