@@ -1,8 +1,6 @@
 import random
-from dataclasses import dataclass, InitVar, field
+from dataclasses import dataclass, InitVar
 from enum import Enum
-
-from gamenacki.forbiddenislandnacki.models.adventurers import Adventurer, Color
 
 from gamenacki.forbiddenislandnacki.models.tiles import Tile, TILES, TileHeight
 
