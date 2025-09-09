@@ -177,17 +177,20 @@ class GameState:
             d[coords].append(adv_str)
         return d
 
+    @property
+    def my_coord(self) -> tuple[int, int]:
+        return self.adventurer_coords[self.adventurers[self.player_turn_idx].name]
+
     def get_possible_shores(self, player_idx: int) -> tuple[AdvShore, ...]:
         """example return: (AdvShore(0, 2, 3, Gold Gate) =
         player 0 is shoring up the tile at coordinates (2, 3), which is Gold Gate"""
-        adv_coord = self.adventurer_coords[self.adventurers[player_idx].name]
-        same_tile = self.board.get_tiles(adv_coord, self.board.TileDirection.SAME)
+        same_tile = self.board.get_tiles(self.my_coord, self.board.TileDirection.SAME)
 
         if isinstance(self.adventurers[player_idx], Explorer):
-            possible_tiles = (same_tile + self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT) +
-                              self.board.get_tiles(adv_coord, self.board.TileDirection.DIAGONAL))
+            possible_tiles = (same_tile + self.board.get_tiles(self.my_coord, self.board.TileDirection.ADJACENT) +
+                              self.board.get_tiles(self.my_coord, self.board.TileDirection.DIAGONAL))
         else:
-            possible_tiles = same_tile + self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+            possible_tiles = same_tile + self.board.get_tiles(self.my_coord, self.board.TileDirection.ADJACENT)
         return tuple([(AdvShore(player_idx, t)) for t in possible_tiles if t.height == TileHeight.FLOODED])
 
     def get_possible_movements(self, player_idx: int) -> tuple[AdvMove, ...]:
@@ -197,17 +200,16 @@ class GameState:
         Navigator can move self adjacent & all others double adjacent; All others can move adjacent"""
 
         adv = self.adventurers[player_idx]
-        adv_coord = self.adventurer_coords[self.adventurers[player_idx].name]
 
         if isinstance(adv, Explorer):
-            possible_tiles = (self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT) +
-                              self.board.get_tiles(adv_coord, self.board.TileDirection.DIAGONAL))
+            possible_tiles = (self.board.get_tiles(self.my_coord, self.board.TileDirection.ADJACENT) +
+                              self.board.get_tiles(self.my_coord, self.board.TileDirection.DIAGONAL))
             return tuple([AdvMove(player_idx, t) for t in possible_tiles])
         if isinstance(adv, Pilot) and self.turn_pilot_flights == 0:
-            possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ALL_OTHER)
+            possible_tiles = self.board.get_tiles(self.my_coord, self.board.TileDirection.ALL_OTHER)
             return tuple([AdvMove(player_idx, t) for t in possible_tiles])
         if isinstance(adv, Navigator):
-            nav_possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+            nav_possible_tiles = self.board.get_tiles(self.my_coord, self.board.TileDirection.ADJACENT)
             all_adv_moves = [AdvMove(player_idx, t) for t in nav_possible_tiles]
             for i, other_adv in enumerate(self.adventurers):
                 if i == player_idx:
@@ -217,7 +219,7 @@ class GameState:
                 all_adv_moves.extend([AdvMove(i, t) for t in other_adv_tiles])
             return tuple(all_adv_moves)
 
-        possible_tiles = self.board.get_tiles(adv_coord, self.board.TileDirection.ADJACENT)
+        possible_tiles = self.board.get_tiles(self.my_coord, self.board.TileDirection.ADJACENT)
         return tuple([AdvMove(player_idx, t) for t in possible_tiles])
 
     def get_possible_treasure_passes(self, player_idx: int) -> tuple[AdvPassCard, ...]:
@@ -225,18 +227,16 @@ class GameState:
         player 0 giving their 4th indexed card to player 1 the pilot; the card is The Earth Stone.
         this class GameState does not have knowledge of 'Player' so the player names aren't known.
         The Messenger can give a card to anyone; all others can only give cards to adventurers on their tile"""
-        my_coord = self.adventurer_coords[self.adventurers[player_idx].name]
         my_t_cards = [(idx, card) for idx, card in enumerate(self.hands[player_idx]) if isinstance(card, TreasureCardTreasure)]
         same_tile_adventurers = [(idx, adv_role) for idx, (adv_role, adv_coord) in enumerate(self.adventurer_coords.items())
-                                 if adv_coord == my_coord and idx != player_idx]
+                                 if adv_coord == self.my_coord and idx != player_idx]
         all_other_adventurers = [(i, adv.name) for i, adv in enumerate(self.adventurers) if i != player_idx]
         eligible_recipients = same_tile_adventurers if not isinstance(self.adventurers[player_idx], Messenger) else same_tile_adventurers + all_other_adventurers
         return tuple([AdvPassCard(player_idx, c_idx, player_i, adv_name, c) for c_idx, c in my_t_cards for (player_i, adv_name) in eligible_recipients])
 
     def get_possible_collect_treasure(self, player_idx: int) -> AdvCollectTreasure | None:
         """example return: AdvCollectTreasure(0, The Earth Stone) = player 0 collects The Earth Stone"""
-        my_coord_x, my_coord_y = self.adventurer_coords[self.adventurers[player_idx].name]
-        my_tile_treasure: Treasure = self.board.get_tile_by_coord(my_coord_x, my_coord_y).treasure
+        my_tile_treasure: Treasure = self.board.get_tile_by_coord(self.my_coord[0], self.my_coord[1]).treasure
         if not my_tile_treasure:
             return None
         if my_tile_treasure in self.treasures_collected:
