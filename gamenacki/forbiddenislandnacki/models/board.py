@@ -52,13 +52,6 @@ class Board:
     def get_tile_by_coord(self, row: int, col: int) -> Tile:
         return next(t for t in self.tiles if t.x == row and t.y == col)
 
-    def get_tile_coord_by_name(self, tile_name: str) -> tuple[int, int]:
-        for r_idx, row in enumerate(self.spaces):
-            for c_idx, space in enumerate(row):
-                if isinstance(space, Tile) and space.name == tile_name:
-                    return r_idx, c_idx
-        raise ValueError(f"I couldn't find a tile named {tile_name}")
-
     def get_tiles(self, coord: tuple[int, int], directions: TileDirection) -> list[Tile]:
         row_cnt, col_cnt = len(self.spaces), len(self.spaces[0])
         neighbors = []
